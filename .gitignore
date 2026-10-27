@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env*
+!.env.example
+migrasi/csv/*
+!migrasi/csv/.gitkeep
+migrasi/sandi-sementara.csv
+migrasi/laporan-*.md
+cadangan/

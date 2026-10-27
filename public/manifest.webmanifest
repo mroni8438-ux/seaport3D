@@ -1,0 +1,13 @@
+{
+  "name": "SeaPort 3D — Realtime Port Tracking System",
+  "short_name": "SeaPort 3D",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070d1e",
+  "theme_color": "#0ea5e9",
+  "lang": "id",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

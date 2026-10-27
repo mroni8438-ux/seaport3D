@@ -1,0 +1,134 @@
+{
+  "urutan": [
+    "pengguna",
+    "dermaga",
+    "crane",
+    "kapal",
+    "kontainer",
+    "log_aktivitas"
+  ],
+  "tabel": {
+    "pengguna": {
+      "csv": "Pengguna.csv",
+      "kolom": {
+        "id": "id",
+        "username": "username",
+        "email": "email",
+        "nama_lengkap": "nama_lengkap",
+        "peran": "peran",
+        "status_aktif": "status_aktif",
+        "gagal_masuk": "gagal_masuk",
+        "terkunci_sampai": "terkunci_sampai",
+        "wajib_ganti_sandi": "wajib_ganti_sandi"
+      },
+      "ubah": {
+        "gagal_masuk": "angka",
+        "terkunci_sampai": "tanggal",
+        "wajib_ganti_sandi": "ya_tidak"
+      },
+      "wajib": ["id", "username", "email", "peran"],
+      "abaikan": ["password"]
+    },
+    "dermaga": {
+      "csv": "Dermaga.csv",
+      "kolom": {
+        "id": "id",
+        "nama_berth": "nama_berth",
+        "panjang_meter": "panjang_meter",
+        "draft_meter": "draft_meter",
+        "status": "status",
+        "id_kapal_aktif": "id_kapal_aktif",
+        "utilisasi_persen": "utilisasi_persen"
+      },
+      "ubah": {
+        "panjang_meter": "angka",
+        "draft_meter": "angka",
+        "utilisasi_persen": "angka"
+      },
+      "wajib": ["id", "nama_berth", "panjang_meter", "draft_meter", "status"],
+      "abaikan": []
+    },
+    "crane": {
+      "csv": "Crane.csv",
+      "kolom": {
+        "id": "id",
+        "nama_crane": "nama_crane",
+        "tipe": "tipe",
+        "id_berth": "id_berth",
+        "status_crane": "status_crane",
+        "target_kontainer": "target_kontainer",
+        "kontainer_terlayani": "kontainer_terlayani",
+        "produktivitas_mph": "produktivitas_mph"
+      },
+      "ubah": {
+        "target_kontainer": "angka",
+        "kontainer_terlayani": "angka",
+        "produktivitas_mph": "angka"
+      },
+      "wajib": ["id", "nama_crane", "id_berth", "status_crane"],
+      "abaikan": []
+    },
+    "kapal": {
+      "csv": "Kapal.csv",
+      "kolom": {
+        "id": "id",
+        "nama_kapal": "nama_kapal",
+        "call_sign": "call_sign",
+        "imo_number": "imo_number",
+        "bendera": "bendera",
+        "tipe_kapal": "tipe_kapal",
+        "kapasitas_teu": "kapasitas_teu",
+        "status_alur": "status_alur",
+        "id_berth": "id_berth",
+        "id_crane": "id_crane",
+        "eta": "eta",
+        "etd": "etd",
+        "waktu_sandar": "waktu_sandar",
+        "muatan_persen": "muatan_persen"
+      },
+      "ubah": {
+        "kapasitas_teu": "angka",
+        "muatan_persen": "angka",
+        "eta": "tanggal",
+        "etd": "tanggal",
+        "waktu_sandar": "tanggal"
+      },
+      "wajib": ["id", "nama_kapal", "call_sign", "imo_number", "status_alur", "eta", "etd"],
+      "abaikan": []
+    },
+    "kontainer": {
+      "csv": "Kontainer.csv",
+      "kolom": {
+        "id": "id",
+        "nomor_kontainer": "nomor_kontainer",
+        "ukuran": "ukuran",
+        "tipe": "tipe",
+        "berat_ton": "berat_ton",
+        "status": "status",
+        "lokasi_yard": "lokasi_yard",
+        "id_kapal": "id_kapal"
+      },
+      "ubah": {
+        "berat_ton": "angka"
+      },
+      "wajib": ["id", "nomor_kontainer", "ukuran", "tipe", "berat_ton", "status", "lokasi_yard"],
+      "abaikan": []
+    },
+    "log_aktivitas": {
+      "csv": "Log_Aktivitas.csv",
+      "kolom": {
+        "id": "id",
+        "tanggal_waktu": "tanggal_waktu",
+        "id_pengguna": "id_pengguna",
+        "aksi": "aksi",
+        "id_referensi": "id_referensi",
+        "rincian": "rincian"
+      },
+      "ubah": {
+        "tanggal_waktu": "tanggal"
+      },
+      "wajib": ["id", "tanggal_waktu", "aksi", "rincian"],
+      "abaikan": []
+    }
+  }
+}

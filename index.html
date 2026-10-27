@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SeaPort 3D — Realtime Port & Vessel Visual Tracking System</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230b1329'/><path d='M20 54 L32 70 L68 70 L80 54 Z' fill='%230ea5e9'/><circle cx='50' cy='35' r='12' fill='%23f59e0b'/></svg>">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Three.js & OrbitControls via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Google Apps Script Stylesheet Include -->
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+
+  <!-- Background Canvas 3D Three.js -->
+  <div id="canvas-container">
+    <canvas id="viewport-3d-canvas"></canvas>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- S-01: LAYAR MASUK (LOGIN SCREEN GLASSMORPHISM) -->
+  <section id="s-01-login" class="screen-view active">
+    <div class="login-backdrop-glow"></div>
+    <div class="login-card-container">
+      <div class="login-card">
+        <!-- Logo Header -->
+        <div class="login-brand">
+          <div class="brand-badge-icon">
+            <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
+              <rect width="100" height="100" rx="20" fill="#0b1329" stroke="#1e293b" stroke-width="3"/>
+              <path d="M18 76 C 30 71, 40 81, 50 76 C 60 71, 70 81, 82 76" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round"/>
+              <path d="M20 54 L32 70 L68 70 L80 54 L74 54 L64 64 L36 64 L26 54 Z" fill="#38bdf8"/>
+              <rect x="34" y="44" width="10" height="8" rx="1.5" fill="#f59e0b"/>
+              <rect x="46" y="44" width="10" height="8" rx="1.5" fill="#10b981"/>
+              <rect x="40" y="34" width="10" height="8" rx="1.5" fill="#0ea5e9"/>
+              <circle cx="72" cy="24" r="3.5" fill="#f59e0b"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h2>SeaPort <span class="cyan-accent">3D</span></h2>
+            <p>Smart Marine Terminal Tracking</p>
+          </div>
+        </div>
+
+        <div class="login-divider"></div>
+
+        <form id="form-login" onsubmit="handleLoginSubmit(event)">
+          <div class="form-group">
+            <label for="login-identitas">ID / username / email</label>
+            <div class="input-wrapper">
+              <i data-lucide="user" class="input-icon"></i>
+              <input type="text" id="login-identitas" placeholder="contoh: controller atau capt@seaport.local" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="login-sandi">PIN / password</label>
+            <div class="input-wrapper">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" id="login-sandi" placeholder="Masukkan kata sandi" required autocomplete="current-password">
+              <button type="button" class="btn-eye-toggle" onclick="togglePasswordVisibility('login-sandi', this)">
+                <i data-lucide="eye" class="eye-icon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Alert Box -->
+          <div id="login-alert" class="alert-box danger-alert hidden">
+            <i data-lucide="alert-circle"></i>
+            <span id="login-alert-msg">Kredensial tidak valid</span>
+          </div>
+
+          <button type="submit" id="btn-login-submit" class="btn-primary-gradient w-full">
+            <span>Masuk ke Dashboard 3D</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </form>
+
+        <!-- Quick Demo Switcher -->
+        <div class="quick-demo-section">
+          <span class="quick-demo-label">Login Percobaan Instan:</span>
+          <div class="quick-demo-buttons">
+            <button type="button" class="btn-chip" onclick="fillQuickCredentials('controller', '123456')">
+              <i data-lucide="shield-check"></i> Controller (Full)
+            </button>
+            <button type="button" class="btn-chip" onclick="fillQuickCredentials('viewer', '123456')">
+              <i data-lucide="eye"></i> Viewer (Pantau)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S-02: DASHBOARD 3D UTAMA (OPERATIONAL HUD) -->
+  <section id="s-02-dashboard" class="screen-view">
+    <div class="ui-overlay-container">
+      
+      <!-- TOP NAVIGATION BAR -->
+      <header class="hud-topbar interactive-panel">
+        <div class="topbar-left">
+          <div class="brand-inline" onclick="resetCameraView()">
+            <div class="pulse-indicator"></div>
+            <h1>SeaPort <span>3D</span></h1>
+            <span class="badge-tag">V1.0 LIVE</span>
+          </div>
+          <div class="live-clock" id="live-clock-display">20 Okt 2026 • 12:00:00 WIB</div>
+        </div>
+
+        <div class="topbar-center">
+          <div class="search-box">
+            <i data-lucide="search"></i>
+            <input type="text" id="input-search-vessel" placeholder="Cari nama kapal, IMO, dermaga..." oninput="handleSearchVessel(this.value)">
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Role Badge -->
+          <div id="user-role-badge" class="badge-role controller-role">
+            <i data-lucide="shield"></i>
+            <span id="label-user-role">Controller</span>
+          </div>
+
+          <!-- Drawer Toggle Button -->
+          <button type="button" class="btn-icon-hud" onclick="toggleSideDrawer()" title="Buka Panel Data Operasional">
+            <i data-lucide="panel-right"></i>
+            <span class="notification-dot"></span>
+          </button>
+
+          <!-- User Profile Button -->
+          <button type="button" class="btn-user-profile" onclick="openProfileModal()">
+            <div class="avatar-circle" id="user-avatar-initials">CH</div>
+            <span class="user-display-name" id="user-display-name">Capt. Hartono</span>
+          </button>
+
+          <!-- Logout Button -->
+          <button type="button" class="btn-icon-hud" onclick="handleLogout()" title="Keluar">
+            <i data-lucide="log-out"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- TOP-LEFT: 3 FLOATING KPI METRICS CARDS -->
+      <div class="kpi-floating-container">
+        <!-- Card 1: Active Vessels -->
+        <div class="kpi-card interactive-panel">
+          <div class="kpi-icon-wrap cyan-glow">
+            <i data-lucide="ship"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">KAPAL DI PELABUHAN</span>
+            <div class="kpi-value-row">
+              <span class="kpi-number" id="kpi-vessels-count">6</span>
+              <span class="kpi-unit">Kapal</span>
+            </div>
+            <span class="kpi-subtext" id="kpi-vessels-sub">4 Sandar • 2 Anchorage</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Berth Occupancy -->
+        <div class="kpi-card interactive-panel">
+          <div class="kpi-icon-wrap amber-glow">
+            <i data-lucide="anchor"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">OKUPANSI DERMAGA</span>
+            <div class="kpi-value-row">
+              <span class="kpi-number" id="kpi-berth-occupancy">75%</span>
+              <span class="kpi-unit">Terisi</span>
+            </div>
+            <span class="kpi-subtext" id="kpi-berth-sub">3 dari 4 Berth Aktif</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Avg Dwelling Time -->
+        <div class="kpi-card interactive-panel">
+          <div class="kpi-icon-wrap emerald-glow">
+            <i data-lucide="clock"></i>
+          </div>
+          <div class="kpi-details">
+            <span class="kpi-label">RATA-RATA WAKTU TUNGGU</span>
+            <div class="kpi-value-row">
+              <span class="kpi-number" id="kpi-dwelling-time">18.4</span>
+              <span class="kpi-unit">Jam</span>
+            </div>
+            <span class="kpi-subtext" id="kpi-dwelling-sub">Dwelling Time Normal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- S-03: FLOATING VESSEL STATUS STEPPER (BOTTOM LEFT) -->
+      <div id="s-03-stepper" class="vessel-stepper-container interactive-panel">
+        <div class="stepper-header">
+          <div class="vessel-title-group">
+            <div class="flag-icon-badge">ID</div>
+            <div>
+              <h3 id="stepper-vessel-name">MV Nusantara Star</h3>
+              <p id="stepper-vessel-meta">Call Sign: YBKA2 • IMO9456781 • Container 3,500 TEU</p>
+            </div>
+          </div>
+          <div class="berth-current-badge" id="stepper-berth-badge">
+            <i data-lucide="map-pin"></i>
+            <span id="stepper-berth-label">Berth 02 North</span>
+          </div>
+        </div>
+
+        <!-- Progress Bar TEU -->
+        <div class="cargo-progress-section">
+          <div class="cargo-meta-row">
+            <span>Progress Bongkar Muat Kontainer:</span>
+            <span id="stepper-cargo-percent" class="bold-white">70% (280 / 400 Box)</span>
+          </div>
+          <div class="progress-track">
+            <div id="stepper-cargo-bar" class="progress-fill" style="width: 70%;"></div>
+          </div>
+        </div>
+
+        <!-- 5-Stage Stepper -->
+        <div class="stepper-track-wrap">
+          <div class="step-node completed" data-step="Anchorage" title="Labuh Perairan Luar">
+            <div class="node-circle"><i data-lucide="check"></i></div>
+            <span class="node-label">Anchorage</span>
+          </div>
+          <div class="step-line active"></div>
+          <div class="step-node completed" data-step="Inbound" title="Pandu Masuk Alur">
+            <div class="node-circle"><i data-lucide="check"></i></div>
+            <span class="node-label">Inbound</span>
+          </div>
+          <div class="step-line active"></div>
+          <div class="step-node completed" data-step="Berthing" title="Sandar di Dermaga">
+            <div class="node-circle"><i data-lucide="check"></i></div>
+            <span class="node-label">Berthing</span>
+          </div>
+          <div class="step-line active"></div>
+          <div class="step-node active-pulse" data-step="Cargo Ops" title="Bongkar Muat Kontainer">
+            <div class="node-circle"><i data-lucide="box"></i></div>
+            <span class="node-label">Cargo Ops</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-node" data-step="Departure" title="Keberangkatan Selesai">
+            <div class="node-circle"><i data-lucide="compass"></i></div>
+            <span class="node-label">Departure</span>
+          </div>
+        </div>
+
+        <!-- Stepper Controller Action -->
+        <div class="stepper-actions" id="controller-stepper-actions">
+          <button type="button" class="btn-action-primary" id="btn-advance-status" onclick="handleAdvanceStatus()">
+            <i data-lucide="play-circle"></i>
+            <span id="label-advance-action">Selesaikan Cargo Ops & Siapkan Keberangkatan</span>
+          </button>
+          <button type="button" class="btn-action-secondary" onclick="focusCameraOnCurrentVessel()">
+            <i data-lucide="crosshair"></i> Kunci Kamera 3D
+          </button>
+        </div>
+      </div>
+
+      <!-- CAMERA 3D TOOLBAR (BOTTOM RIGHT) -->
+      <div class="camera-toolbar-container interactive-panel">
+        <button type="button" class="btn-camera" onclick="cameraZoomIn()" title="Perbesar Kamera (+)">
+          <i data-lucide="zoom-in"></i>
+        </button>
+        <button type="button" class="btn-camera" onclick="cameraZoomOut()" title="Perkecil Kamera (-)">
+          <i data-lucide="zoom-out"></i>
+        </button>
+        <button type="button" class="btn-camera" id="btn-auto-rotate" onclick="toggleAutoRotateCamera()" title="Putar Sudut Otomatis">
+          <i data-lucide="rotate-cw"></i>
+        </button>
+        <button type="button" class="btn-camera" onclick="setCameraTopDownView()" title="Sudut Pandang Atas (Top-down)">
+          <i data-lucide="arrow-up"></i>
+        </button>
+        <button type="button" class="btn-camera" onclick="resetCameraView()" title="Reset Kamera Default">
+          <i data-lucide="home"></i>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- S-04: SIDE DRAWER OPERASIONAL PELABUHAN (SLIDING PANEL KANAN) -->
+  <aside id="s-04-drawer" class="side-drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title-row">
+        <i data-lucide="layout-grid" class="cyan-icon"></i>
+        <h2>Pusat Operasional Pelabuhan</h2>
+      </div>
+      <button type="button" class="btn-close-drawer" onclick="toggleSideDrawer(false)">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <!-- Segmented Tabs -->
+    <div class="drawer-tabs">
+      <button type="button" class="tab-button active" onclick="switchDrawerTab('berth')">
+        <i data-lucide="anchor"></i> Dermaga (4)
+      </button>
+      <button type="button" class="tab-button" onclick="switchDrawerTab('crane')">
+        <i data-lucide="git-commit"></i> Crane STS (4)
+      </button>
+      <button type="button" class="tab-button" onclick="switchDrawerTab('vessels')">
+        <i data-lucide="ship"></i> Kapal (<span id="tab-vessels-count">6</span>)
+      </button>
+    </div>
+
+    <!-- Tab 1: Dermaga Content -->
+    <div id="tab-content-berth" class="tab-pane active">
+      <div class="drawer-section-info">
+        <span>Status Alokasi Dermaga Peti Kemas (Draft min. 13.5m)</span>
+      </div>
+      <div class="berth-cards-list" id="berth-cards-list">
+        <!-- Rendered dynamically by javascript -->
+      </div>
+    </div>
+
+    <!-- Tab 2: Crane Content -->
+    <div id="tab-content-crane" class="tab-pane">
+      <div class="drawer-section-info">
+        <span>Produktivitas Derek STS (Moves Per Hour)</span>
+      </div>
+      <div class="crane-cards-list" id="crane-cards-list">
+        <!-- Rendered dynamically by javascript -->
+      </div>
+    </div>
+
+    <!-- Tab 3: Kapal Aktif Content -->
+    <div id="tab-content-vessels" class="tab-pane">
+      <div class="drawer-section-info">
+        <span>Daftar Manifest Kapal Kontainer Aktif</span>
+      </div>
+      <div class="vessels-table-container" id="vessels-cards-list">
+        <!-- Rendered dynamically by javascript -->
+      </div>
+    </div>
+  </aside>
+
+  <!-- S-05: MODAL PROFIL & PENGATURAN SANDI -->
+  <div id="s-05-modal-profil" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <i data-lucide="user-check" class="cyan-icon"></i>
+          <h3>Profil Pengguna & Keamanan Akun</h3>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closeProfileModal()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- User Info Summary -->
+        <div class="user-info-card">
+          <div class="avatar-lg" id="modal-avatar-lg">CH</div>
+          <div class="user-meta-lg">
+            <h4 id="modal-user-name">Capt. Hartono</h4>
+            <p id="modal-user-email">controller@seaport.local</p>
+            <span class="role-pill" id="modal-role-pill">Controller Operasional</span>
+          </div>
+        </div>
+
+        <div class="modal-section-divider"></div>
+
+        <!-- Section: Ganti Sandi Mandiri -->
+        <div class="modal-sub-section">
+          <h4>Ganti Kata Sandi Mandiri</h4>
+          <p class="section-desc">Gunakan minimal 8 karakter dengan kombinasi angka dan huruf.</p>
+
+          <form id="form-ganti-sandi" onsubmit="handleGantiSandiSubmit(event)">
+            <div class="form-group">
+              <label for="input-sandi-lama">Kata Sandi Lama</label>
+              <input type="password" id="input-sandi-lama" required placeholder="Sandi saat ini">
+            </div>
+            <div class="form-group">
+              <label for="input-sandi-baru">Kata Sandi Baru</label>
+              <input type="password" id="input-sandi-baru" required placeholder="Minimal 8 karakter">
+            </div>
+            <div class="form-group">
+              <label for="input-sandi-ulangi">Ulangi Kata Sandi Baru</label>
+              <input type="password" id="input-sandi-ulangi" required placeholder="Ketik ulang kata sandi baru">
+            </div>
+            <button type="submit" class="btn-primary-gradient">
+              <i data-lucide="check"></i> Simpan Sandi Baru
+            </button>
+          </form>
+        </div>
+
+        <!-- Section: Atur Ulang Sandi Staf (Khusus Controller) -->
+        <div class="modal-sub-section admin-section" id="admin-reset-section">
+          <h4><i data-lucide="key"></i> Atur Ulang Sandi Staf (Admin Controller)</h4>
+          <p class="section-desc">Pilih staf untuk membuat sandi sementara acak. Staf wajib mengganti sandi saat masuk.</p>
+          
+          <div class="admin-reset-form-row">
+            <select id="select-staff-user" class="select-field">
+              <option value="USR-002">Petugas Viewer (viewer@seaport.local)</option>
+            </select>
+            <button type="button" class="btn-action-warning" onclick="handleAturUlangSandiSubmit()">
+              <i data-lucide="refresh-cw"></i> Reset Sandi
+            </button>
+          </div>
+
+          <div id="box-sandi-sementara" class="temp-password-box hidden">
+            <span>Sandi Sementara:</span>
+            <code id="text-sandi-sementara">PORT-9821</code>
+            <button type="button" class="btn-copy" onclick="copyTemporaryPassword()">
+              <i data-lucide="copy"></i> Salin
+            </button>
+            <small class="text-amber">&#9888; Serahkan langsung ke staf bersangkutan.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S-06: LAYAR BUAT SANDI BARU (WAJIB GANTI SANDI) -->
+  <section id="s-06-force-password" class="screen-view">
+    <div class="login-backdrop-glow"></div>
+    <div class="login-card-container">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="brand-badge-icon amber-badge">
+            <i data-lucide="alert-triangle"></i>
+          </div>
+          <div class="brand-text">
+            <h2>Aktivasi Sandi Baru</h2>
+            <p>Pembaruan Kata Sandi Wajib</p>
+          </div>
+        </div>
+
+        <div class="warning-banner">
+          <i data-lucide="info"></i>
+          <span>Kata sandi Anda telah diatur ulang oleh Controller. Harap tentukan sandi baru untuk melanjutkan ke dashboard.</span>
+        </div>
+
+        <form id="form-force-password" onsubmit="handleForcePasswordSubmit(event)">
+          <div class="form-group">
+            <label for="force-sandi-baru">Kata Sandi Baru</label>
+            <div class="input-wrapper">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" id="force-sandi-baru" placeholder="Minimal 8 karakter" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="force-sandi-ulangi">Ulangi Kata Sandi Baru</label>
+            <div class="input-wrapper">
+              <i data-lucide="check" class="input-icon"></i>
+              <input type="password" id="force-sandi-ulangi" placeholder="Konfirmasi kata sandi" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-gradient w-full">
+            <span>Aktifkan Sandi & Buka Dashboard</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Google Apps Script JavaScript Include -->
+  <script type="module" src="/src/main.js"></script>
+
+  <!-- Fallback standalone scripts for offline browser execution -->
+  <script>
+    // Initialize icons
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>
