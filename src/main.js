@@ -46,22 +46,100 @@ const STATE = {
 // =============================================================================
 // 2. SERVER COMMUNICATION LAYER (panggilServer)
 // =============================================================================
-function panggilServer(namaFungsi, ...args) {
-  return new Promise((resolve) => {
-    // Mode Google Apps Script Web App
-    if (window.google && google.script && google.script.run) {
+async function panggilServer(namaFungsi, ...args) {
+  // Mode Google Apps Script Web App
+  if (window.google && google.script && google.script.run) {
+    return new Promise((resolve) => {
       google.script.run
         .withSuccessHandler((response) => resolve(response))
         .withFailureHandler((err) => resolve({ ok: false, pesan: err ? (err.message || err.toString()) : 'Galat server' }))
         [namaFungsi](...args);
-    } else {
-      // MODE CONTOH (MOCK FALLBACK) UNTUK PENGUJIAN LOKAL BROWSER
-      console.log(`[MOCK MODE] panggilServer: ${namaFungsi}`, args);
-      setTimeout(() => {
-        resolve(eksekusiMockServer(namaFungsi, args));
-      }, 300);
+    });
+  }
+
+  // Set Pro — Supabase API & Edge Functions
+  try {
+    if (namaFungsi === 'masuk') {
+      const [identitas, sandi] = args;
+      const res = await api.masuk(identitas, sandi);
+      if (res && res.ok) {
+        return {
+          ok: true,
+          token: res.sesi?.access_token || 'TOKEN-' + Date.now(),
+          peran: res.pengguna?.peran || 'Controller',
+          nama: res.pengguna?.nama_lengkap || identitas,
+          wajib_ganti_sandi: (res.pengguna?.wajib_ganti_sandi === true || res.pengguna?.wajib_ganti_sandi === 'Ya') ? 'Ya' : 'Tidak'
+        };
+      }
+      return res || { ok: false, pesan: 'ID atau kata sandi tidak cocok' };
     }
-  });
+
+    if (namaFungsi === 'getDataAwal') {
+      const res = await api.getDataAwal();
+      if (res && res.ok && res.data) {
+        return res;
+      }
+      return eksekusiMockServer('getDataAwal', args);
+    }
+
+    if (namaFungsi === 'updateStatusKapal') {
+      const [_token, idKapal, statusBaru] = args;
+      const res = await api.updateStatusKapal(idKapal, statusBaru);
+      if (res && res.ok) {
+        const vsl = STATE.vessels.find(v => v.id === idKapal);
+        if (vsl) {
+          vsl.status_alur = statusBaru;
+          if (statusBaru === 'Departure' && vsl.id_berth) {
+            const brt = STATE.berths.find(b => b.id === vsl.id_berth);
+            if (brt) {
+              brt.status = 'Available';
+              brt.id_kapal_aktif = null;
+            }
+            vsl.id_berth = null;
+          }
+        }
+        return res;
+      }
+      return res || { ok: false, pesan: 'Gagal update status kapal' };
+    }
+
+    if (namaFungsi === 'alokasiDermaga') {
+      const [_token, idKapal, idBerth] = args;
+      const res = await api.alokasiDermaga(idKapal, idBerth);
+      if (res && res.ok) {
+        const vsl = STATE.vessels.find(v => v.id === idKapal);
+        const brt = STATE.berths.find(b => b.id === idBerth);
+        if (vsl && brt) {
+          vsl.id_berth = idBerth;
+          vsl.status_alur = 'Berthing';
+          brt.status = 'Occupied';
+          brt.id_kapal_aktif = idKapal;
+        }
+        return res;
+      }
+      return res || { ok: false, pesan: 'Gagal alokasi dermaga' };
+    }
+
+    if (namaFungsi === 'tugaskanCrane') {
+      const [_token, idKapal, idCrane] = args;
+      return await api.tugaskanCrane(idKapal, idCrane);
+    }
+
+    if (namaFungsi === 'gantiSandi') {
+      const [_token, sandiLama, sandiBaru] = args;
+      return await api.gantiSandi(sandiLama, sandiBaru);
+    }
+
+    if (namaFungsi === 'aturUlangSandi') {
+      const [_token, idPengguna] = args;
+      return await api.aturUlangSandi(idPengguna);
+    }
+
+    return eksekusiMockServer(namaFungsi, args);
+  } catch (err) {
+    console.error(`[panggilServer] Galat ${namaFungsi}:`, err);
+    return { ok: false, pesan: err.message || 'Galat sistem' };
+  }
 }
 
 function eksekusiMockServer(namaFungsi, args) {
@@ -872,6 +950,18 @@ async function handleLoginSubmit(event) {
     applyUserSession();
     showScreen('s-02-dashboard');
     showToast(`Selamat datang, ${res.nama}!`);
+
+    // Ambil data terkini dari Supabase
+    panggilServer('getDataAwal').then(dataAwal => {
+      if (dataAwal && dataAwal.ok && dataAwal.data) {
+        if (dataAwal.data.kapal?.length) STATE.vessels = dataAwal.data.kapal;
+        if (dataAwal.data.dermaga?.length) STATE.berths = dataAwal.data.dermaga;
+        if (dataAwal.data.crane?.length) STATE.cranes = dataAwal.data.crane;
+        renderVesselStepper();
+        renderSideDrawerContent();
+        updateKPICards();
+      }
+    }).catch(console.warn);
   } else {
     if (alertBox) {
       alertMsg.textContent = res.pesan || 'ID / username / email atau password salah.';
@@ -1061,23 +1151,22 @@ Object.assign(window, {
   handleLogout,
   openProfileModal,
   closeProfileModal,
-  handleGantiSandiModal,
+  handleGantiSandiSubmit,
   handleAturUlangSandiSubmit,
   copyTemporaryPassword,
   handleForcePasswordSubmit,
   switchDrawerTab,
-  closeDrawer,
-  openDrawer,
+  toggleSideDrawer,
   selectVessel,
-  handleUpdateStatus,
-  handleAlokasiBerth,
-  handleTugaskanCrane,
-  toggleAutoRotate,
+  handleAdvanceStatus,
+  alokasikanKapalKeBerth,
+  toggleAutoRotateCamera,
   resetCameraView,
-  zoomIn,
-  zoomOut,
-  focusVessel,
-  handleGlobalSearch,
+  setCameraTopDownView,
+  cameraZoomIn,
+  cameraZoomOut,
+  focusCameraOnCurrentVessel,
+  handleSearchVessel,
   showToast,
   showScreen
 });
